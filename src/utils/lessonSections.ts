@@ -30,7 +30,7 @@ export function partitionLesson(
       } else if (introduction.length && !attachIntroductionToFirstLesson) {
         sections.push({ title: 'Überblick', blocks: [...introduction] });
       }
-      const isFirst = !current;
+      const isFirst: boolean = current === null;
       current = {
         title: block.title || 'Lernabschnitt',
         blocks: isFirst && attachIntroductionToFirstLesson
