@@ -20,7 +20,7 @@ const m = (question: string, correct: string[], wrong: string[]): CuratedPractic
 // LF9 already has a large, individually written question catalogue. The tumour
 // section was previously skipped and fell back to generic comprehension prompts.
 const lf9TumorPracticeChecks: Record<string, CuratedPracticeQuestion[]> = {
-  '6.1 Was ist ein Tumor?': [
+  '6.1 Tumor ist nicht automatisch Krebs': [
     s('Was unterscheidet einen malignen Tumor von einem benignen Tumor besonders?', 'Maligne Tumoren können invasiv wachsen und metastasieren.', [
       'Benigne Tumoren bilden definitionsgemäß Fernmetastasen.',
       'Maligne Tumoren sind immer vollständig abgekapselt.',
@@ -36,7 +36,7 @@ const lf9TumorPracticeChecks: Record<string, CuratedPracticeQuestion[]> = {
       'Sie sind immer mit einer Krebserkrankung gleichzusetzen.',
     ]),
   ],
-  '6.2 Wie entsteht Krebs?': [
+  '6.2 Wie kann Krebs entstehen?': [
     s('Was kann dazu führen, dass Zellen ihre Wachstumskontrolle verlieren?', 'Eine Anhäufung ungünstiger Veränderungen im Erbgut.', [
       'Eine normale und fehlerfreie Regulation jeder Zellteilung.',
       'Die bloße Anwesenheit einer gesunden Zellmembran.',
@@ -52,7 +52,7 @@ const lf9TumorPracticeChecks: Record<string, CuratedPracticeQuestion[]> = {
       'Bösartige Zellen können niemals in umliegendes Gewebe einwachsen.',
     ]),
   ],
-  '6.3 Primärtumor und Metastasen': [
+  '6.3 Primärtumor und Metastasen – wo hat der Krebs begonnen?': [
     s('Was bezeichnet der Begriff Primärtumor?', 'Den ursprünglichen Krebsherd, von dem die Erkrankung ausgeht.', [
       'Immer eine Tochtergeschwulst in einem anderen Organ.',
       'Ausschließlich eine nicht entzündete Lymphknotenschwellung.',
@@ -68,7 +68,7 @@ const lf9TumorPracticeChecks: Record<string, CuratedPracticeQuestion[]> = {
       'Metastasen bleiben definitionsgemäß immer auf den ursprünglichen Tumor begrenzt.',
     ]),
   ],
-  '6.4 TNM-System': [
+  '6.4 TNM-System – wie weit hat sich die Erkrankung ausgebreitet?': [
     s('Wofür steht der Buchstabe N in der TNM-Klassifikation?', 'Für den Befall regionaler Lymphknoten.', [
       'Für die Anzahl der benötigten Medikamente.',
       'Für den allgemeinen Ernährungszustand.',
@@ -84,7 +84,7 @@ const lf9TumorPracticeChecks: Record<string, CuratedPracticeQuestion[]> = {
       'T beschreibt den Impfstatus des Patienten.',
     ]),
   ],
-  '6.5 Krebsbehandlung': [
+  '6.5 Krebstherapie – lokal behandeln oder den ganzen Körper erreichen?': [
     s('Welche Behandlungsform zählt grundsätzlich zu den systemischen Krebstherapien?', 'Eine geeignete medikamentöse Therapie, die im Körper verteilt wirkt.', [
       'Die alleinige chirurgische Entfernung eines örtlich begrenzten Befunds.',
       'Die ausschließliche Bestrahlung eines lokal definierten Feldes.',
@@ -100,7 +100,7 @@ const lf9TumorPracticeChecks: Record<string, CuratedPracticeQuestion[]> = {
       'Unabhängig von der Tumorart grundsätzlich von einem einzigen festen Schema.',
     ]),
   ],
-  '6.6 Ösophagus-, Magen- und kolorektales Karzinom': [
+  '6.6 Tumoren im Verdauungstrakt – typische Warnzeichen einordnen': [
     s('Welches Symptom sollte besonders an eine Erkrankung der Speiseröhre denken lassen?', 'Anhaltende Schluckbeschwerden (Dysphagie).', [
       'Ausschließlich Schmerzen im Sprunggelenk.',
       'Nur eine kurzfristig verstopfte Nase.',
@@ -145,10 +145,17 @@ function rewriteTopic(topic: LearningTopic, catalog: Record<string, CuratedPract
 
   const finish = () => {
     if (!segment.length) return;
-    // Earlier enrichers may have inserted exercises. Remove them rather than
-    // stacking another set of almost identical questions below the same text.
-    const practiceIndex = segment.findIndex(isPracticeHeading);
-    const visible = practiceIndex < 0 ? segment : segment.slice(0, practiceIndex);
+    // Remove only old exercise headings and their linked answer lists. Keep
+    // videos, explanations and other material appearing after an exercise.
+    const visible: TopicContent[] = [];
+    for (let i = 0; i < segment.length; i += 1) {
+      const block = segment[i];
+      if (isPracticeHeading(block)) {
+        if (segment[i + 1]?.type === 'list') i += 1;
+        continue;
+      }
+      visible.push(block);
+    }
     content.push(...visible);
     const checks = title ? catalog[title] : undefined;
     if (checks?.length && visible.length) {
