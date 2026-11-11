@@ -26,6 +26,7 @@ import {
 import { MiniCrossword } from '@/components/MiniCrossword';
 import { LearningRewardGame } from '@/components/LearningRewardGame';
 import { buildFiveOptions } from '@/utils/questionOptions';
+import { partitionLesson, isLessonPracticeHeading as isPracticeHeading } from '@/utils/lessonSections';
 import type { LearningModule, LearningResult, LearningTopic, QuizOption, QuizQuestion, TopicContent } from '@/types';
 
 interface ModuleDetailProps {
@@ -79,12 +80,6 @@ function shortAnswer(value: string, max = 170) {
 
 function unique(values: string[]) {
   return Array.from(new Set(values.map(clean).filter(Boolean)));
-}
-
-function isPracticeHeading(block: TopicContent) {
-  if (block.type !== 'heading' || !block.title) return false;
-  const title = block.title.trim();
-  return title.startsWith('✍️') || /^(übungen?|aufgaben?|mini[- ]?check|lerncheck|arbeitsauftrag|wiederholung)/i.test(title);
 }
 
 function learningPoints(blocks: TopicContent[]) {
@@ -152,53 +147,41 @@ function buildChecks(sources: PracticeSource[], blocks: TopicContent[], seed: nu
   }));
 }
 
-function splitTopicIntoSteps(topic: LearningTopic, topicIndex: number, questionBank: QuizQuestion[]): GuidedStep[] {
-  const rawSteps: { title: string; blocks: TopicContent[] }[] = [];
-  let current: { title: string; blocks: TopicContent[] } | null = null;
-  const intro: TopicContent[] = [];
-
-  topic.content.forEach(block => {
-    const startsNewPart = block.type === 'heading' && !isPracticeHeading(block);
-    if (startsNewPart) {
-      if (!current && intro.length) {
-        rawSteps.push({ title: 'Überblick', blocks: [...intro] });
-        intro.length = 0;
-      }
-      if (current) rawSteps.push(current);
-      current = { title: block.title || 'Lernabschnitt', blocks: [block] };
-      return;
-    }
-    if (current) current.blocks.push(block);
-    else intro.push(block);
-  });
-
-  if (current) rawSteps.push(current);
-  else if (intro.length) rawSteps.push({ title: topic.title, blocks: intro });
+function splitTopicIntoSteps(
+  topic: LearningTopic,
+  topicIndex: number,
+  questionBank: QuizQuestion[],
+  attachIntroductionToFirstLesson = false,
+): GuidedStep[] {
+  const rawSteps = partitionLesson(topic, attachIntroductionToFirstLesson);
 
   return rawSteps.map((raw, stepIndex) => {
-    const practiceHeadingIndex = raw.blocks.findIndex(isPracticeHeading);
     const practiceItems: string[] = [];
     const hidden = new Set<number>();
-    if (practiceHeadingIndex >= 0) {
-      hidden.add(practiceHeadingIndex);
-      raw.blocks.forEach((block, index) => {
-        if (index > practiceHeadingIndex && block.type === 'list' && block.items?.length) {
-          practiceItems.push(...block.items);
-          hidden.add(index);
-        }
-      });
-    }
+
+    // Only the list directly attached to an exercise heading contains quiz
+    // items. Ordinary learning lists must remain visible and are not answers.
+    raw.blocks.forEach((block, index) => {
+      if (!isPracticeHeading(block)) return;
+      hidden.add(index);
+      const next = raw.blocks[index + 1];
+      if (next?.type === 'list') {
+        practiceItems.push(...(next.items || []));
+        hidden.add(index + 1);
+      }
+    });
+
     let blocks = raw.blocks.filter((_, index) => !hidden.has(index));
     if (blocks[0]?.type === 'heading' && blocks[0].title === raw.title) blocks = blocks.slice(1);
+
     const parsed = practiceItems.map(item => parsePracticeItem(item, blocks));
-    const sources = parsed;
     return {
       key: `${topic.id}::${stepIndex}`,
       topicIndex,
       stepIndex,
       title: raw.title,
       blocks,
-      checks: buildChecks(sources, blocks, topicIndex * 37 + stepIndex * 13 + 5, questionBank),
+      checks: buildChecks(parsed, blocks, topicIndex * 37 + stepIndex * 13 + 5, questionBank),
       challenge: parsed[2]?.question || parsed.find(item => item.question.length > 120)?.question,
     };
   });
@@ -256,7 +239,9 @@ function isQuestionCorrect(question: QuizQuestion, answer: string | string[] | u
 
 export function ModuleDetail({ module, onBack, onUpdateProgress, onUpdateResult, currentProgress, allModules, onOpenModule }: ModuleDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>('learn');
-  const topicSteps = useMemo(() => module.topics.map((topic, index) => splitTopicIntoSteps(topic, index, module.questions)), [module.topics, module.questions]);
+  const topicSteps = useMemo(() => module.topics.map((topic, index) =>
+    splitTopicIntoSteps(topic, index, module.questions, ['lf9', 'lf10', 'lf11', 'lf12'].includes(module.id))),
+  [module.id, module.topics, module.questions]);
   const allSteps = useMemo(() => topicSteps.flat(), [topicSteps]);
   const controlQuestions = useMemo(() => normalizeFinalQuestions(module), [module]);
 
