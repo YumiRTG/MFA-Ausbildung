@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Verify practice questions
+        run: node scripts/verify-practice.mjs
+
       - name: Build
         run: npm run build
 
