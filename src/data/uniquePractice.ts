@@ -2,6 +2,7 @@ import type { LearningModule, LearningTopic, TopicContent } from '@/types';
 import { lf10PracticeChecks } from './lf10PracticeChecks';
 import { lf11PracticeChecks } from './lf11PracticeChecks';
 import { lf12PracticeChecks } from './lf12PracticeChecks';
+import { extraPracticeChecks } from './extraPracticeChecks';
 
 export interface CuratedPracticeQuestion {
   question: string;
@@ -221,10 +222,12 @@ function removeRepeatedPracticeItems(topics: LearningTopic[]): LearningTopic[] {
 
 export function useDistinctPractice(module: LearningModule): LearningModule {
   const catalog = catalogs[module.id];
+  const withoutRepeatedFinalQuiz = module.topics.filter(topic => topic.id !== module.id + '-pruefungswissen');
   if (catalog) {
+    const expanded = { ...catalog, ...(extraPracticeChecks[module.id] || {}) };
     return {
       ...module,
-      topics: removeRepeatedPracticeItems(module.topics.map(topic => rewriteTopic(topic, catalog))),
+      topics: removeRepeatedPracticeItems(withoutRepeatedFinalQuiz.map(topic => rewriteTopic(topic, expanded))),
     };
   }
 
@@ -232,8 +235,12 @@ export function useDistinctPractice(module: LearningModule): LearningModule {
     return {
       ...module,
       topics: removeRepeatedPracticeItems(
-        module.topics.map(topic => {
+        withoutRepeatedFinalQuiz.map(topic => {
           if (topic.id === 'lf9-06-tumore') return rewriteTopic(topic, lf9TumorPracticeChecks);
+          const extra = extraPracticeChecks.lf9;
+          if (topic.content.some(block => block.type === 'heading' && Boolean(block.title && extra[block.title]))) {
+            return rewriteTopic(topic, extra);
+          }
           return withoutLf9Overview(topic);
         }),
       ),
