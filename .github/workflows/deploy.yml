@@ -37,6 +37,9 @@ jobs:
       - name: Verify practice questions
         run: node scripts/verify-practice.mjs
 
+      - name: Verify rendered lesson questions
+        run: node scripts/verify-rendered-practice.mjs
+
       - name: Build
         run: npm run build
 
