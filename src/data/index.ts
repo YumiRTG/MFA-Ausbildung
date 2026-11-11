@@ -27,6 +27,7 @@ import { finalReadabilityPolish } from './finalReadabilityPolish';
 import { polishLf9QuestionQuality } from './lf9QuestionQuality';
 import { ensureLf9DistinctQuickChecks } from './lf9QuickCheckAnswers';
 import { makeQuickChecksThoughtful } from './thoughtfulQuickChecks';
+import { useDistinctPractice } from './uniquePractice';
 import { addEmbeddedVideosEverywhere } from './embeddedVideoExpansion';
 import { polishQuestionContent } from './questionContentQuality';
 import { polishQuestionOptions } from '@/utils/questionOptions';
@@ -84,6 +85,7 @@ export const modules = [lf1, lf2, lf3, lf4, lf5, lf6, lf7, lf8, lf9, lf10, lf11,
   .map(polishQuestionContent)
   .map(polishQuestionOptions)
   .map(makeQuickChecksThoughtful)
+  .map(useDistinctPractice)
   .map(addEmbeddedVideosEverywhere);
 
 export { lf1, lf2, lf3, lf4, lf5, lf6, lf7, lf8, lf9, lf10, lf11, lf12 };
